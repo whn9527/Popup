@@ -1,0 +1,12 @@
+{
+	"name": "popup",
+	"description": "通用弹框组件",
+	"version": "1.1",
+	"author": {
+		"name": "Haonan Wang",
+		"email": "haonan1@staff.sina.com.cn"
+	},
+	"devDependencies": {
+		"grunt-jsdoc": "*"
+	}
+}

@@ -1,0 +1,840 @@
+/**
+ * @file Popup组件
+ * @author Haonan Wang
+ * @version 0.1.1
+ * @copyright Haonan Wang
+ */
+
+/**
+ * @namespace window
+ */
+;(function() {
+	/**
+	 * 语言增强支持
+	 * @ignore
+	 * @static
+	 * @memberOf window
+	 * @property {Function} isString 是否为字符串
+	 * @property {Function} isArray 是否为数组
+	 * @property {Function} isFunction 是否为方法
+	 * @property {Function} isObject 是否为对象
+	 */
+	var UL = {
+		isString: isType("String"),
+		isArray: Array.isArray || isType("Array"),
+		isFunction: isType("Function"),
+		isObject: isType("Object")
+	};
+	/**
+	 * DOM增强支持
+	 * @ignore
+	 * @static
+	 * @memberOf window
+	 * @property {Function} querySelector 查询节点
+	 * @property {Function} hasClass 是否含有类名
+	 * @property {Function} addClass 添加类
+	 * @property {Function} removeClass 删除类
+	 */
+	var	UD = {
+		querySelector: querySelector,
+		hasClass: hasClass,
+		addClass: addClass,
+		removeClass: removeClass,
+		addStyles: addStyles
+	};
+	/**
+	 * 事件增强支持
+	 * @ignore
+	 * @static
+	 * @memberOf window
+	 * @property {Function} addEvent 添加事件
+	 * @property {Function} removeEvent 删除事件
+	 */
+	var UE = {
+		addEvent: addEvent,
+		removeEvent: removeEvent
+	};
+
+	/**
+	 * 接收一个选择器,生成基于该DOM节点的弹框对象,类似于jQuery的用法
+	 * @class Popup
+	 * @memberOf window
+	 * @param {String} [selector=document.body] 选择器
+	 * @example
+	 * Popup('.test')
+	 */
+	var Popup = function(selector) {
+		/**
+		 * 通过选择器获取目标节点
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup
+		 * @type {Element}
+		 */
+		this.targetEl = selector ? (UD.querySelector(selector) && document.body) : document.body;
+		/**
+		 * 是否为临时创建
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup
+		 * @type {Boolean}
+		 */
+		this.disposable = true;
+		/**
+		 * 是否允许背景层滚动
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup
+		 * @type {Boolean}
+		 */
+		this.backScroll = true;
+		/**
+		 * 是否有遮罩层,遮罩层上禁止页面滚动
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup
+		 * @type {Boolean}
+		 */
+		this.mask = true;
+		/**
+		 * 点击遮罩层时是否关闭弹框
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup
+		 * @type {Boolean}
+		 */
+		this.closeOnMask = false;
+		/**
+		 * 弹框节点
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup
+		 * @type {Element}
+		 */
+		this.popupEl = void 0;
+		/**
+		 * 内容层节点
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup
+		 * @type {Element}
+		 */
+		this.containerEl = void 0;
+		/**
+		 * 遮罩层节点
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup
+		 * @type {Element}
+		 */
+		this.maskEl = void 0;
+		/**
+		 * 弹框大小位置是否自适应
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup
+		 * @type {Boolean}
+		 */
+		this.autoSize = true;
+		/**
+		 * 存储目标节点滚动事件
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup
+		 * @type {Function}
+		 */
+		this._scrollEvent = void 0;
+	};
+
+	Popup.prototype = {
+		/**
+		 * 创建自定义弹框,使用该方式创建的弹框对象将会保存至手动销毁[.destroy()]
+		 * @memberOf window.Popup#
+		 * @param {Object} options 创建弹框所需参数
+		 * @param {String|Element} options.content 弹框内容,若为节点,则节点需要放在body子一级
+		 * @param {String} [options.prefixClass=''] 前缀class
+		 * @param {Boolean} [params.backScroll=true] 是否允许背景层滚动
+		 * @param {Boolean} [params.mask=true] 是否有遮罩层
+		 * @param {Boolean} [options.closeOnMask=false] 点击遮罩层时是否关闭弹框
+		 * @param {String|Number} [options.width] 弹框宽度(不加单位或为数字则默认单位是px),若不设置则自适应
+		 * @param {String|Number} [options.height] 弹框高度(不加单位或为数字则默认单位是px),若不设置则自适应
+		 * @param {Function} [options.beforeClose] 关闭前调用函数
+		 * @param {Function} [options.afterClose] 关闭后调用函数
+		 * @return {Object} 返回实例
+		 * @example
+		 * Popup('.test').create({
+		 *     content: document.getElementById('showNode').innerHTML,
+		 *     prefixClass: 'mypopup-',
+		 *     closeOnMask: true,
+		 *     width: 600,
+		 *     height: 400,
+		 *     beforeClose: function(){console.log('我要关闭了')},
+		 *     afterClose: function(){console.log('我已经关闭了')}
+		 * })
+		 */
+		create: function(options) {
+			var content = this.content = options.content;
+			this.prefixClass = options.prefixClass || '';
+			this.mask = options.mask === undefined ? true : options.mask;
+			this.backScroll = options.backScroll === undefined ? true : options.backScroll;
+			this.closeOnMask = options.closeOnMask || false;
+			this.width = options.width;
+			this.height = options.height;
+			this._eventsList.beforeClose = options.beforeClose;
+			this._eventsList.beforeClose = options.afterClose;
+			this.disposable = false;
+
+			this._createDOM(content);
+			this._bindEvents();
+
+			return this;
+		},
+
+		/**
+		 * 打开弹框
+		 * @memberOf window.Popup#
+		 * @param {String|Number} [width] 弹框宽度(不加单位或为数字则默认单位是px),若不设置则自适应
+		 * @param {String|Number} [height] 弹框高度(不加单位或为数字则默认单位是px),若不设置则自适应
+		 * @return {Object} 返回实例
+		 * @example
+		 * //popup为实例
+		 * popup.open()
+		 */
+		open: function(width, height) {
+			var self = this,
+				scrollEl = this.targetEl,
+				top;
+
+			// 标志弹窗已关闭
+			this.isClosed = false;
+
+			// 处理背景层不允许滚动的情况
+			if (!this.backScroll) {
+				if (scrollEl == document.body) {
+					scrollEl =  document.documentElement.scrollTop == 0 ? scrollEl : document.documentElement;
+					top = scrollEl.scrollTop;
+				}
+
+				if (typeof this._scrollEvent === 'undefined'){
+					this._scrollEvent = this.targetEl.onscroll;
+				}
+
+				scrollEl.onscroll = function() {
+					scrollEl.scrollTop = top;
+				}
+			}
+
+			this.popupEl.style.display = '';
+
+			this._calculateSize(width, height);
+
+			return this;
+		},
+
+		/**
+		 * 关闭弹框,如果是非create方式创建的对象则关闭的同时销毁自身
+		 * @memberOf window.Popup#
+		 * @return {Object} 返回实例
+		 * @example
+		 * //popup为实例
+		 * popup.close()
+		 */
+		close: function() {
+			var scrollEl = this.targetEl;
+
+			// 标志弹窗已打开
+			this.isClosed = true;
+
+			// 处理背景层不允许滚动的情况
+			if (!this.backScroll) {
+				if (scrollEl == document.body) {
+					scrollEl =  document.documentElement.scrollTop == 0 ? scrollEl : document.documentElement;
+				}
+				scrollEl.onscroll = this._scrollEvent;
+			}
+
+			this.popupEl.style.display = 'none';
+
+			// 如果是非create创建的对象,则关闭同时调用destroy
+			if (this.disposable) {
+				this.destroy();
+				return true;
+			} else {
+				return this;
+			}
+		},
+
+		/**
+		 * 基于弹框内容,重新渲染
+		 * @memberOf window.Popup#
+		 * @return {Object} 返回实例
+		 * @example
+		 * //popup为实例
+		 * popup.refresh()
+		 */
+		refresh: function() {
+			this._calculateSize();
+			return this;
+		},
+
+		/**
+		 * 销毁实例
+		 * @memberOf window.Popup#
+		 * @return {Object} 返回实例
+		 * @example
+		 * //popup为实例
+		 * popup.destroy()
+		 */
+		destroy: function() {
+			var self = this;
+			// 若弹窗未关闭，则先关闭
+			if (!this.isClosed) {
+				// 防止close中重复调用destroy
+				this.disposable = false;
+				this.close();
+			}
+			
+			// 销毁事件
+			UE.removeEvent(this.containerEl, 'click touchstart', function(e){
+				self._onContainer.call(self, e);
+			});
+			if (this.mask) {
+				UE.removeEvent(this.maskEl, 'click touchstart', function(e){
+					self._onMask.call(self, e);
+				});
+			} 
+
+			// 还原销毁节点
+			if (this.content && !UL.isString(this.content)) {
+				document.body.appendChild(this.content);
+			}
+			this.targetEl.style.position = '';
+			this.popupEl.parentNode.removeChild(this.popupEl);
+		},
+
+		/**
+		 * 警告框 无需create,可直接调用
+		 * @method alert
+		 * @memberOf window.Popup#
+		 * @param {String} txt 显示文本
+		 * @param {Callback} [okCallback] 点击确定后回调
+		 * @return {Object} 返回实例
+		 * @example
+		 * Popup('.test').alert('js是世界第二好的语言',function(){console.log('第一是谁')})
+		 */
+		/** 
+		 * 警告框 无需create,可直接调用
+		 * @method alert^2
+		 * @memberOf window.Popup#
+		 * @param {Object} params 可选参数
+		 * @param {String} params.txt 显示文本
+		 * @param {String} [params.okTxt=确定] 确定按钮文本
+		 * @param {Boolean} [params.backScroll=true] 是否允许背景层滚动
+		 * @param {Boolean} [params.mask=true] 是否有遮罩层
+		 * @param {Boolean} [params.closeOnMask=false] 点击遮罩层时是否关闭弹框
+		 * @param {String|Number} [params.width] 弹框宽度(不加单位或为数字则默认单位是px),若不设置则自适应
+		 * @param {String|Number} [params.height] 弹框高度(不加单位或为数字则默认单位是px),若不设置则自适应
+		 * @param {Callback} [params.okCallback] 点击确定后回调
+		 * @return {Object} 返回实例
+		 * @example
+		 * Popup().alert({
+		 * 	   txt: 'js是世界第二好的语言',
+		 * 	   okTxt: 'ok',
+		 * 	   mask: true,
+		 * 	   width: 200,
+		 * 	   height: 100,
+		 * 	   closeOnMask: true,
+		 * 	   okCallback: function(){console.log('第一是谁')}
+		 * })
+		 */
+		alert: function() {
+			var txt, okTxt = '确定', content;
+
+			if (UL.isObject(arguments[0])) {
+				txt = arguments[0].txt;
+				okTxt = arguments[0].okTxt || okTxt;
+				this.backScroll = arguments[0].backScroll === undefined ? true : arguments[0].backScroll;
+				this.mask = arguments[0].mask === undefined ? true : arguments[0].mask;
+				this.closeOnMask = arguments[0].closeOnMask || false;
+				this.width = arguments[0].width;
+				this.height = arguments[0].height;
+				this._eventsList.okCallback = arguments[0].okCallback;
+			} else if (UL.isFunction(arguments[1])) {
+				txt = arguments[0];
+				this._eventsList.okCallback = arguments[1];
+			} else {
+				txt = arguments[0];
+			}
+
+			this.prefixClass = 'alert-';
+
+			content = '<p class="alert-content">' + txt + '</p><a class="alert-ok popup-ok">' + okTxt + '</a>';
+
+			this._createDOM(content);
+			this._bindEvents();
+			this.open();
+
+			return this;
+		},
+
+		/**
+		 * 确认框 无需create,可直接调用
+		 * @method confirm
+		 * @memberOf window.Popup#
+		 * @param {String} txt 显示文本
+		 * @param {Callback} [okCallback] 点击确定后回调
+		 * @param {Callback} [cancelCallback] 点击取消后回调
+		 * @return {Object} 返回实例
+		 * @example
+		 * Popup('.test').confirm('js是世界第二好的语言',function(){console.log('是的')},function(){console.log('我再想想')})
+		 */
+		/** 
+		 * 确认框 无需create,可直接调用
+		 * @method confirm^2
+		 * @memberOf window.Popup#
+		 * @param {Object} params 可选参数
+		 * @param {String} params.txt 显示文本
+		 * @param {String} [params.okTxt=确定] 确定按钮文本
+		 * @param {String} [params.cancelTxt=取消] 取消按钮文本
+		 * @param {Boolean} [params.backScroll=true] 是否允许背景层滚动
+		 * @param {Boolean} [params.mask=true] 是否有遮罩层
+		 * @param {Boolean} [params.closeOnMask=false] 点击遮罩层时是否关闭弹框
+		 * @param {String|Number} [params.width] 弹框宽度(不加单位或为数字则默认单位是px),若不设置则自适应
+		 * @param {String|Number} [params.height] 弹框高度(不加单位或为数字则默认单位是px),若不设置则自适应
+		 * @param {Callback} [params.okCallback] 点击确定后回调
+		 * @param {Callback} [params.cancelCallback] 点击取消后回调
+		 * @return {Object} 返回实例
+		 * @example
+		 * Popup('#test').confirm({
+		 *     txt: 'js是世界第二好的语言',
+		 *     okTxt: 'ok',
+		 *     cancelTxt: 'cancel',
+		 *     mask: true,
+		 *     closeOnMask: true,
+		 *     width: 300,
+		 *     height: 100,
+		 *     okCallback: function(){console.log('就是')},
+		 *     cancelCallback: function(){console.log('我再想想')}
+		 * })
+		 */
+		confirm: function() {
+			var okTxt = '确定', cancelTxt = '取消', content;
+
+			if (UL.isObject(arguments[0])) {
+				txt = arguments[0].txt;
+				okTxt = arguments[0].okTxt || okTxt;
+				cancelTxt = arguments[0].cancelTxt || cancelTxt;
+				this.backScroll = arguments[0].backScroll === undefined ? true : arguments[0].backScroll;
+				this.mask = arguments[0].mask === undefined ? true : arguments[0].mask;
+				this.closeOnMask = arguments[0].closeOnMask || false;
+				this.width = arguments[0].width;
+				this.height = arguments[0].height;
+				this._eventsList.okCallback = arguments[0].okCallback;
+				this._eventsList.cancelCallback = arguments[0].cancelCallback;
+			} else if (UL.isFunction(arguments[1])) {
+				txt = arguments[0];
+				this._eventsList.okCallback = arguments[1];
+				this._eventsList.cancelCallback = arguments[2];
+			} else {
+				txt = arguments[0];
+			}
+
+			this.prefixClass = 'confirm-';
+
+			content = '<p class="confirm-content">' + txt + '</p><a class="confirm-ok popup-ok">' + okTxt + '</a><a class="confirm-cancel popup-cancel">' + cancelTxt + '</a>';
+
+			this._createDOM(content);
+			this._bindEvents();
+			this.open();
+
+			return this;
+		},
+
+		/**
+		 * 提示框 无需create,可直接调用
+		 * @method prompt
+		 * @memberOf window.Popup#
+		 * @param {String} txt 显示文本
+		 * @param {Callback} [okCallback] 点击确定后回调
+		 * @param {Callback} [cancelCallback] 点击取消后回调
+		 * @return {Object} 返回实例
+		 * @example
+		 * Popup('.test').prompt('世界上最好的语言是什么',function(){console.log('就是这个')},function(){console.log('我再想想')})
+		 */
+		/** 
+		 * 提示框 无需create,可直接调用
+		 * @method prompt^2
+		 * @memberOf window.Popup#
+		 * @param {Object} params 可选参数
+		 * @param {String} params.txt 显示文本
+		 * @param {String} [params.okTxt=确定] 确定按钮文本
+		 * @param {String} [params.cancelTxt=取消] 取消按钮文本
+		 * @param {String} [params.placeholder=请输入] 输入框默认文本
+		 * @param {Boolean} [params.backScroll=true] 是否允许背景层滚动
+		 * @param {Boolean} [params.mask=true] 是否有遮罩层
+		 * @param {Boolean} [params.closeOnMask=false] 点击遮罩层时是否关闭弹框
+		 * @param {String|Number} [params.width] 弹框宽度(不加单位或为数字则默认单位是px),若不设置则自适应
+		 * @param {String|Number} [params.height] 弹框高度(不加单位或为数字则默认单位是px),若不设置则自适应
+		 * @param {Callback} [params.okCallback] 点击确定后回调
+		 * @param {Callback} [params.cancelCallback] 点击取消后回调
+		 * @return {Object} 返回实例
+		 * @example
+		 * Popup('#test').prompt({
+		 *     txt: '世界上最好的语言是什么',
+		 *     okTxt: 'ok',
+		 *     cancelTxt: 'cancel',
+		 *     placeholder: 'js'
+		 *     mask: true,
+		 *     closeOnMask: true,
+		 *     width: 350,
+		 *     height: 200,
+		 *     okCallback: function(){console.log('就是这个')},
+		 *     cancelCallback: function(){console.log('我再想想')}
+		 * })
+		 */
+		prompt: function() {
+			var self = this, 
+				okTxt = '确定', 
+				cancelTxt = '取消', 
+				placeholder = '请输入';
+
+			if (UL.isObject(arguments[0])) {
+				txt = arguments[0].txt;
+				okTxt = arguments[0].okTxt || okTxt;
+				cancelTxt = arguments[0].cancelTxt || cancelTxt;
+				placeholder = arguments[0].placeholder || placeholder;
+				this.backScroll = arguments[0].backScroll === undefined ? true : arguments[0].backScroll;
+				this.mask = arguments[0].mask === undefined ? true : arguments[0].mask;
+				this.closeOnMask = arguments[0].closeOnMask || false;
+				this.width = arguments[0].width;
+				this.height = arguments[0].height;
+				this._eventsList.okCallback = arguments[0].okCallback;
+				this._eventsList.cancelCallback = arguments[0].cancelCallback;
+			} else if (UL.isFunction(arguments[1])) {
+				txt = arguments[0];
+				this._eventsList.okCallback = arguments[1];
+				this._eventsList.cancelCallback = arguments[2];
+			} else {
+				txt = arguments[0];
+			}
+
+			this.prefixClass = 'prompot-';
+
+			var content = '<p class="prompot-content">' + txt + '</p><input class="prompot-input" type="text" placeholder=' + placeholder + '><a class="prompot-ok popup-ok">' + okTxt + '</a><a class="prompot-cancel popup-cancel">' + cancelTxt + '</a>';
+
+			this._createDOM(content);
+			this._bindEvents();
+
+			// 自定义事件
+			var okEl = UD.querySelector(this.containerEl, '.prompot-ok'),
+				inputEl = UD.querySelector(this.containerEl, '.prompot-input');
+
+			UE.addEvent(okEl, 'click touchstart', function(e) {
+				var val = inputEl.value;
+
+				self._eventsList.okCallback && self._eventsList.okCallback(val);
+				self.close();
+
+				if (typeof e.stopPropagation === 'function') {
+    				e.stopPropagation();
+				} else {
+					e.cancelBubble = true;
+				}
+			});
+
+			this.open();
+
+			inputEl.focus();
+
+			return this;
+		},
+
+		/**
+		 * 计算弹框尺寸
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup#
+		 * @param {String|Number} [width] 弹框宽度(不加单位或为数字则默认单位是px),若不设置则自适应
+		 * @param {String|Number} [height] 弹框高度(不加单位或为数字则默认单位是px),若不设置则自适应
+		 */
+		_calculateSize: function(width, height) {
+			// 重置innerEl尺寸，以使其自适应所包含内容的大小
+			this.innerEl.style.width = '';
+			this.innerEl.style.height = '';
+
+			var rootEl = (this.targetEl === document.body) ? document.documentElement : this.targetEl,
+				maxHeight = rootEl.clientHeight,
+				maxWidth = rootEl.clientWidth,
+				reg = new RegExp('/([\d.]*)(\w*)/'),
+				adjustWidth,
+				adjustHeight,
+				widthUnit,
+				heightUnit,
+				temp;
+
+			if (width || this.width) {
+				temp = reg.exec(width || this.width);
+				adjustWidth = temp[1];
+				widthUnit = temp[2] || 'px';
+			} else {
+				adjustWidth = this.innerEl.offsetWidth;
+				widthUnit = 'px';
+				if (adjustWidth > maxWidth - 100) {
+					adjustWidth = maxWidth - 100;
+				}
+			}
+			if (height || this.height) {
+				temp = reg.exec(height || this.height);
+				adjustHeight = temp[1];
+				heightUnit = temp[2] || 'px';
+			} else {
+				adjustHeight = this.innerEl.offsetHeight;
+				heightUnit = 'px';
+				if (adjustHeight > maxHeight - 80) {
+					adjustHeight = maxHeight - 80;
+				}
+			}
+
+			UD.addStyles(this.innerEl, {
+				width: adjustWidth + widthUnit,
+				height: adjustHeight + heightUnit
+			});
+			UD.addStyles(this.containerEl, {
+				width: adjustWidth + widthUnit,
+				height: adjustHeight + heightUnit
+			});
+
+			if (this.mask) {
+				UD.addStyles(this.containerEl, {
+					top: '50%',
+					left: '50%',
+					marginTop: -adjustHeight/2 + heightUnit,
+					marginLeft: -adjustWidth/2 + widthUnit
+				});
+			} else {
+				UD.addStyles(this.containerEl, {
+					position: 'relative',
+					top: 0,
+					left: 0,
+					marginTop: 0,
+					marginLeft: 0
+				});
+
+				UD.addStyles(this.popupEl, {
+					width: adjustWidth + widthUnit,
+					height: adjustHeight + heightUnit,
+					top: '50%',
+					left: '50%',
+					marginTop: -adjustHeight/2 + heightUnit,
+					marginLeft: -adjustWidth/2 + widthUnit
+				});
+			}
+		},
+		/**
+		 * 创建弹框DOM
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup#
+		 * @param {String|Element} content 弹框内容HTML字符串或节点
+		 */
+		_createDOM: function(content) {
+			var popupEl = this.popupEl = document.createElement('div'),
+				containerEl = this.containerEl = document.createElement('div'),
+				innerEl = this.innerEl = document.createElement('div'),
+				maskEl = this.maskEl = document.createElement('div'),
+				closeEl = this.closeEl = document.createElement('div');
+
+			this.targetEl.style.position = 'relative';
+
+			// 如果目标元素是body，则对弹框进行fixed定位
+			this._addPrefixClass(popupEl, 'popup-wrapper');
+			if (this.targetEl === document.body) {
+				UD.addClass(popupEl, 'popup-inwindow');
+			}
+
+			// 若有遮罩层则创建之
+			if (this.mask) {
+				this._addPrefixClass(maskEl, 'popup-mask');
+				popupEl.appendChild(maskEl);
+			}
+
+			// 创建关闭按钮
+			this._addPrefixClass(closeEl, 'popup-close');
+			containerEl.appendChild(closeEl);
+
+			// 创建内容包裹节点
+			this._addPrefixClass(containerEl, 'popup-container');
+			this._addPrefixClass(innerEl, 'popup-inner');
+			containerEl.appendChild(innerEl);
+			popupEl.appendChild(containerEl);
+
+			// 将内容添加进弹框
+			if (UL.isString(content)) {
+				innerEl.innerHTML = content;
+			} else {
+				innerEl.appendChild(content);
+			}
+
+			popupEl.style.display = 'none';
+			this.targetEl.appendChild(popupEl);
+		},
+		/**
+		 * 添加前缀class
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup#
+		 * @param {Element} ele class添加节点
+		 * @param {String} cls 未加前缀的原class
+		 */
+		_addPrefixClass: function(ele, cls) {
+			var newCls = this.prefixClass ? this.prefixClass + cls + ' ' + cls : cls;
+			UD.addClass(ele, newCls);
+		},
+		/**
+		 * 绑定弹框事件
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup#
+		 */
+		_bindEvents: function() {
+			var self = this;
+
+			UE.addEvent(this.containerEl, 'click touchstart', function(e){
+				self._onContainer.call(self, e);
+			});
+
+			if (this.mask) {
+				UE.addEvent(this.maskEl, 'click touchstart', function(e){
+					self._onMask.call(self, e);
+				});
+			} 
+		},
+		/**
+		 * 内容层事件
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup#
+		 * @param {Event} e 事件对象
+		 */
+		_onContainer: function(e) {
+			var e = e || window.event,
+				src = e.target || e.srcElement,
+				eventsList = this._eventsList;
+
+			switch (true){
+				case UD.hasClass(src, 'popup-close'):
+					eventsList.beforeClose && eventsList.beforeClose();
+					this.close();
+					eventsList.afterClose && eventsList.afterClose();
+					break;
+				case UD.hasClass(src, 'popup-ok'):
+					this.close();
+					eventsList.okCallback && eventsList.okCallback();
+					break;
+				case UD.hasClass(src, 'popup-cancel'):
+					this.close();
+					eventsList.cancelCallback && eventsList.cancelCallback();
+			}
+		},
+		/**
+		 * 遮罩层事件
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup#
+		 * @param {Event} e 事件对象
+		 */
+		_onMask: function(e) {
+			var e = e || window.event,
+				src = e.target || e.srcElement,
+				eventsList = this._eventsList;
+
+			if (this.closeOnMask) {
+				eventsList.beforeClose && eventsList.beforeClose();
+				this.close();
+				eventsList.afterClose && eventsList.afterClose();
+			}
+		},
+		/**
+		 * 自定义事件列表
+		 * @ignore
+		 * @private
+		 * @memberOf window.Popup#
+		 * @param {Event} e 事件对象
+		 */
+		_eventsList: {}
+	}
+
+	Popup.prototype.constructor = Popup;
+
+	window.Popup = function(selector) {
+		return new Popup(selector);
+	}
+
+	/* 依赖函数 */
+	function eventHandler(els, types, callback, onCatch, handler) {
+		onCatch = onCatch ? true : false;
+
+		var fn = {
+			add: ['addEventListener', 'attachEvent'],
+			remove: ['removeEventListener', 'detachEvent']
+		},
+		fn1 = fn[handler][0],
+		fn2 = fn[handler][1];
+
+		var eventStream = document[fn1] ? true : false,
+			typeArr = types.replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '').split(' '),
+			elArr = [].concat(els);
+
+		for (var i = 0, len1 = elArr.length; i < len1; i++) {
+	        var o = elArr[i];
+	        for (var j = 0, len2 = typeArr.length; j < len2; j++) {
+	        	eventStream ? o[fn1](typeArr[j], callback, onCatch) : o[fn2]("on" + typeArr[j], callback);
+	        }
+	    }
+	}
+	function addEvent(els, types, callback, onCatch) {
+		eventHandler(els, types, callback, onCatch, 'add');
+	}
+
+	function removeEvent(els, types, callback, onCatch) {
+		eventHandler(els, types, callback, onCatch, 'remove');
+	}
+	function isType(type) {
+		return function(obj) {
+			return Object.prototype.toString.call(obj) === '[object ' + type + ']';
+		}
+	}
+	function querySelector() {
+		var root, selector;
+		if (typeof arguments[1] === 'undefined') {
+			root = document;
+			selector = arguments[0];
+		} else {
+			root = arguments[0];
+			selector = arguments[1];
+		}
+		return root.querySelector(selector);
+	}
+	function hasClass(el, cls) {
+		var reg = new RegExp('(^|\\s)' + cls + '($|\\s)');
+
+		return reg.test(el.className);
+	}
+	function addClass(el, cls) {
+		if (!hasClass(el, cls)) {
+			return el.className += ' ' + cls;
+		}
+	}
+	function removeClass(el, cls) {
+		var reg = new RegExp('(^|\\s)' + cls + '($|\\s)', 'g');
+
+		return el.className = el.className.replace(reg, '');
+	}
+	function addStyles(el, styles) {
+		var styleList = el.style;
+
+		for (var k in styles) {
+			styleList[k] = styles[k];
+		}
+	}
+})();

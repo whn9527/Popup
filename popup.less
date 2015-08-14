@@ -1,0 +1,133 @@
+@fontColor1 : #575757;
+@fontColor2 : #797979;
+@btnOkColor : #FF8400;
+@btnCancelColor : #C1C1C1;
+.btn{
+	display: inline-block;
+	background-color: #8CD4F5;
+    color: white;
+    border: none;
+    box-shadow: none;
+    font-size: 17px;
+    font-weight: 500;
+    -webkit-border-radius: 4px;
+    border-radius: 5px;
+    padding: 10px 32px;
+    margin: 26px 5px 0 5px;
+    cursor: pointer;
+}
+
+body{width: 100%; height: 100%;}
+
+.popup-wrapper {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+}
+.popup-inwindow {
+	position: fixed;
+}
+.popup-mask {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0, 0, 0, 0.4);
+	background-color: #000000 \9;
+	filter: alpha(opacity=40);
+}
+.popup-container {
+	position: absolute;
+}
+.popup-inner {
+	float: left;
+	overflow: hidden;
+	color: #333;
+	font-size: 14px;
+	background-color: #fff;
+}
+.popup-close {
+	position: absolute;
+	width: 12px;
+	height: 15px;
+	top: 5px;
+	right: 8px;
+	cursor: pointer;
+	background: url(close.png) 0 0;
+}
+.popup-close:hover{
+	background-position: 0 -15px;
+}
+
+/* alert & confirm & prompot */
+.alert-popup-inner {
+	min-width: 200px;
+}
+.confirm-popup-inner {
+	min-width: 240px;
+}
+.alert-popup-inner,
+.confirm-popup-inner,
+.prompot-popup-inner {
+	border-radius: 3px;
+	text-align: center;
+}
+.alert-content,
+.confirm-content,
+.prompot-content {
+	margin: 15px 0 0;
+	font-weight: bold;
+	color: #575757;
+}
+.alert-ok,
+.confirm-ok,
+.prompot-ok,
+.confirm-cancel,
+.prompot-cancel {
+	display: inline-block;
+	background-color: @btnOkColor;
+	color: #fff;
+	border: none;
+	box-shadow: none;
+	font-size: 13px;
+	padding: 4px 15px;
+	margin: 15px 8px 7px;
+	cursor: pointer;
+}
+.confirm-cancel,
+.prompot-cancel {
+	background-color: @btnCancelColor;
+}
+.prompot-input{
+	display: block;
+	width: 260px;
+	outline: none;
+	border: 1px solid #d7d7d7;
+	height: 28px;
+	margin: 15px 15px 0;
+	padding: 0 12px;
+	box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.06);
+	-webkit-transition: all 0.3s;
+	transition: all 0.3s;
+	&:focus {
+		outline: none;
+		box-shadow: 0px 0px 3px #c4e6f5;
+		border: 1px solid #b4dbed; 
+	}
+	&:focus::-moz-placeholder {
+		transition: opacity 0.3s 0.03s ease;
+		opacity: 0.5;
+	}
+	&:focus:-ms-input-placeholder {
+		transition: opacity 0.3s 0.03s ease;
+		opacity: 0.5;
+	}
+	&:focus::-webkit-input-placeholder {
+		transition: opacity 0.3s 0.03s ease;
+		opacity: 0.5;
+	}
+	&::-moz-placeholder {color: #bdbdbd; }
+	&:-ms-input-placeholder {color: #bdbdbd; }
+	&::-webkit-input-placeholder {color: #bdbdbd; }
+}
